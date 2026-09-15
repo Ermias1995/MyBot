@@ -1,8 +1,7 @@
-// All database access lives here, so bot.js never talks to Supabase directly.
-const supabase = require('./supabaseClient');
+'use strict';
 
-// Seeded for every new user. Keep these names in sync with the keyword map
-// in src/parsers/manualParser.js (guessCategory matches against them).
+const supabase = require('./client');
+
 const DEFAULT_CATEGORIES = [
   'Food',
   'Transport',
@@ -14,9 +13,34 @@ const DEFAULT_CATEGORIES = [
   'Other',
 ];
 
+const CATEGORY_ICONS = {
+  Food: '🍽️',
+  Transport: '🚌',
+  Rent: '🏠',
+  Groceries: '🛒',
+  Entertainment: '🎬',
+  Health: '💊',
+  Bills: '💡',
+  Other: '📦',
+  Uncategorised: '❓',
+};
+
+const CURRENCY = 'ETB';
+const RECENT_LIMIT = 10;
+
+const iconFor = (name) => CATEGORY_ICONS[name] ?? '📦';
+const round2 = (n) => Math.round(n * 100) / 100;
+
+function localDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /**
  * Registers the user if new and seeds default categories once.
- * Idempotent - safe to call on every message. Returns the user's categories.
+ * Idempotent — safe on every message / request.
  */
 async function ensureUser(telegramUser) {
   const { error } = await supabase.from('users').upsert(
@@ -53,10 +77,6 @@ async function listCategories(telegramId) {
   return data ?? [];
 }
 
-/**
- * Inserts a transaction. categoryId may be null when the category is not
- * known yet. Returns the created row, including its id (needed for buttons).
- */
 async function addTransaction({ telegramId, categoryId, amount, note }) {
   const { data, error } = await supabase
     .from('transactions')
@@ -72,11 +92,6 @@ async function addTransaction({ telegramId, categoryId, amount, note }) {
   return data;
 }
 
-/**
- * Re-points one transaction at a different category. Scoped by user so no one
- * can update someone else's transaction. Returns { id } or null when the row
- * does not exist / belongs to someone else.
- */
 async function updateTransactionCategory(telegramId, transactionId, categoryId) {
   const { data, error } = await supabase
     .from('transactions')
@@ -89,10 +104,6 @@ async function updateTransactionCategory(telegramId, transactionId, categoryId) 
   return data;
 }
 
-/**
- * Deletes the most recent transaction and returns it, or null when the user
- * has none. Fetch-then-delete is not atomic, but is fine for a single user.
- */
 async function deleteLastTransaction(telegramId) {
   const { data: latest, error: fetchError } = await supabase
     .from('transactions')
@@ -113,11 +124,6 @@ async function deleteLastTransaction(telegramId) {
   return latest;
 }
 
-/**
- * Total spend for the current calendar month, grouped by category.
- * Uses the machine's local timezone for the month boundary.
- * Returns { total, byCategory: [{ category, total }] } sorted high to low.
- */
 async function getMonthlySummary(telegramId) {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -134,7 +140,6 @@ async function getMonthlySummary(telegramId) {
   const totals = new Map();
   let grand = 0;
   for (const row of data ?? []) {
-    // Rows saved before a category was picked show up as "Uncategorised".
     const name = row.categories ? row.categories.name : 'Uncategorised';
     const value = Number(row.amount);
     totals.set(name, (totals.get(name) ?? 0) + value);
@@ -149,12 +154,85 @@ async function getMonthlySummary(telegramId) {
   };
 }
 
+/**
+ * Payload for GET /api/dashboard (Mini App home screen).
+ */
+async function getDashboard(telegramUser) {
+  await ensureUser(telegramUser);
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const { data: monthRows, error: monthError } = await supabase
+    .from('transactions')
+    .select('amount, categories(name)')
+    .eq('user_id', telegramUser.id)
+    .gte('spent_at', monthStart.toISOString())
+    .lt('spent_at', nextMonthStart.toISOString());
+  if (monthError) throw monthError;
+
+  const totals = new Map();
+  let monthTotal = 0;
+  for (const row of monthRows ?? []) {
+    const name = row.categories ? row.categories.name : 'Uncategorised';
+    const value = Number(row.amount);
+    totals.set(name, (totals.get(name) ?? 0) + value);
+    monthTotal += value;
+  }
+
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    days.push({ date: localDateKey(day), amount: 0 });
+  }
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  const { data: weekRows, error: weekError } = await supabase
+    .from('transactions')
+    .select('amount, spent_at')
+    .eq('user_id', telegramUser.id)
+    .gte('spent_at', weekStart.toISOString());
+  if (weekError) throw weekError;
+
+  const byDay = new Map(days.map((d) => [d.date, d]));
+  for (const row of weekRows ?? []) {
+    const day = byDay.get(localDateKey(new Date(row.spent_at)));
+    if (day) day.amount = round2(day.amount + Number(row.amount));
+  }
+
+  const { data: recent, error: recentError } = await supabase
+    .from('transactions')
+    .select('id, amount, note, spent_at, categories(name)')
+    .eq('user_id', telegramUser.id)
+    .order('id', { ascending: false })
+    .limit(RECENT_LIMIT);
+  if (recentError) throw recentError;
+
+  return {
+    currency: CURRENCY,
+    monthTotal: round2(monthTotal),
+    byCategory: [...totals.entries()]
+      .map(([name, amount]) => ({ name, icon: iconFor(name), amount: round2(amount) }))
+      .sort((a, b) => b.amount - a.amount),
+    last7Days: days,
+    recentTransactions: (recent ?? []).map((row) => ({
+      id: row.id,
+      amount: round2(Number(row.amount)),
+      note: row.note,
+      category: row.categories ? row.categories.name : null,
+      occurred_at: row.spent_at,
+    })),
+  };
+}
+
 module.exports = {
   DEFAULT_CATEGORIES,
+  CATEGORY_ICONS,
   ensureUser,
   listCategories,
   addTransaction,
   updateTransactionCategory,
   deleteLastTransaction,
   getMonthlySummary,
+  getDashboard,
 };

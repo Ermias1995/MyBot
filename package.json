@@ -1,18 +1,22 @@
 {
   "name": "expense-bot",
+  "private": true,
   "version": "1.0.0",
-  "description": "Telegram bot for manual expense tracking, backed by Supabase",
-  "main": "src/bot.js",
+  "description": "Telegram expense tracker — bot + Mini App + API",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "start": "node src/bot.js",
-    "dev": "node --watch src/bot.js"
+    "dev:bot": "npm run dev -w @expense/bot",
+    "dev:api": "npm run dev -w @expense/api",
+    "dev:web": "npm run dev -w @expense/miniapp",
+    "start:bot": "npm run start -w @expense/bot",
+    "start:api": "npm run start -w @expense/api",
+    "build:web": "npm run build -w @expense/miniapp",
+    "test:init-data": "npm run test:init-data -w @expense/api"
   },
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
-    "dotenv": "^16.4.5",
-    "node-telegram-bot-api": "^0.66.0"
   }
 }

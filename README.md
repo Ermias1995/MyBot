@@ -1,53 +1,58 @@
 # Expense Bot
 
-A Telegram bot for manual expense tracking, backed by Supabase (Postgres).
+Telegram expense tracker: chat bot for logging, Mini App dashboard for insights, Express API + Supabase behind both.
 
-## Features
+## Structure
 
-- Log an expense by texting an amount and a note: `150 lunch`, `2400 rent for september`
-- The category is guessed from keywords in the note; when unsure, the bot shows inline buttons to pick one
-- `/start` registers you and seeds default categories
-- `/summary` shows this month's total spend broken down by category
-- `/undo` deletes your last logged transaction
-- `/categories` lists your categories
-- A "Change category" button appears on logged expenses
+```
+expense-bot/
+├── apps/
+│   ├── bot/        # Telegram bot (long polling)
+│   ├── api/        # Express API for the Mini App
+│   └── miniapp/    # React + Vite Telegram Mini App
+├── packages/
+│   └── db/         # Shared Supabase client + queries
+├── supabase/
+│   └── schema.sql
+└── .env.example
+```
+
+One `npm install` at the repo root — npm workspaces hoist dependencies (no separate installs per app).
 
 ## Setup
 
-1. Install Node.js 18 or newer.
-2. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
-3. Create a Supabase project, then open the SQL editor and run the contents of `supabase_schema.sql`.
-4. `npm install`
-5. Copy `.env.example` to `.env` and fill in:
-   - `TELEGRAM_BOT_TOKEN` - from BotFather
-   - `SUPABASE_URL` - Supabase -> Project Settings -> API
-   - `SUPABASE_SERVICE_KEY` - the `service_role` secret key (server-side only; never commit it)
-6. `npm start` (or `npm run dev` to auto-restart on file changes)
+1. Node.js 18+
+2. Create a bot with [@BotFather](https://t.me/BotFather)
+3. Create a Supabase project and run `supabase/schema.sql` in the SQL editor
+4. Copy `.env.example` → `.env` and fill in the values
+5. For the Mini App locally, copy `apps/miniapp/.env.example` → `apps/miniapp/.env` (defaults are fine)
+6. From the repo root:
 
-## Project layout
-
-```
-src/
-  bot.js                  entry point: commands, message + callback handlers
-  db/supabaseClient.js    single shared Supabase client
-  db/queries.js           all database access (users, categories, transactions)
-  parsers/manualParser.js "150 lunch" -> { amount, note } + category guessing
-supabase_schema.sql      tables: users, categories, transactions
+```bash
+npm install
 ```
 
-## Manual test checklist
+## Run
 
-1. `/start` -> welcome message, categories seeded
-2. `150 lunch` -> logged, guessed category Food
-3. `2400 rent for september` -> logged as Rent
-4. `99 stuff and things` -> logged, inline category buttons appear; tap one -> "Category saved"
-5. `/summary` -> totals add up, month breakdown is correct
-6. `/undo` -> deletes the last transaction; `/summary` reflects it
-7. `abc`, `150`, `-5 lunch` -> friendly usage errors
+```bash
+npm run dev:bot    # Telegram bot
+npm run dev:api    # API on http://localhost:3000
+npm run dev:web    # Mini App (Vite; proxies /api → API)
+```
 
-## Notes & known limitations
+## Features
 
-- "This month" uses the local timezone of the machine running the bot.
-- If the bot process dies between saving a transaction and replying, Telegram may redeliver the update on restart - a rare duplicate entry is possible.
-- `/undo` is not atomic (fetch latest, then delete); fine for a single-user bot.
-- The bot uses the Supabase service_role key, which bypasses row level security. Keep `.env` private and never commit it.
+**Bot**
+- Log expenses: `150 lunch`
+- Keyword category guess + inline pick when unsure
+- `/start` `/summary` `/undo` `/categories`
+
+**Mini App**
+- Auth via Telegram `initData` (HMAC verified on the API)
+- Dashboard: month total, category donut, 7-day chart, recent list
+
+## Notes
+
+- Keep `SUPABASE_SERVICE_KEY` server-side only (root `.env`)
+- “This month” uses the server machine’s local timezone
+- Change-category on the bot and Add Expense in the Mini App are still placeholders

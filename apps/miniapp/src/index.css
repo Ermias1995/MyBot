@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-tg-bg: var(--tg-theme-bg-color, #ffffff);
+  --color-tg-text: var(--tg-theme-text-color, #000000);
+  --color-tg-button: var(--tg-theme-button-color, #2ea6ff);
+  --color-tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --color-tg-secondary: var(--tg-theme-secondary-bg-color, #efeff4);
+  --color-tg-hint: var(--tg-theme-hint-color, #999999);
+}
+
+@layer base {
+  body {
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
+  }
+}

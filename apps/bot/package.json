@@ -1,0 +1,14 @@
+{
+  "name": "@expense/bot",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js"
+  },
+  "dependencies": {
+    "@expense/db": "*",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

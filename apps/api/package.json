@@ -1,0 +1,16 @@
+{
+  "name": "@expense/api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test:init-data": "node scripts/make-test-init-data.js"
+  },
+  "dependencies": {
+    "@expense/db": "*",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

@@ -1,9 +1,7 @@
-// Text parsing: turns free-form input into structured data.
-// Kept free of any I/O so it is trivial to unit-test without Telegram/Supabase.
+'use strict';
 
-// Keyword -> category. Order matters: the first hit wins, so put specific
-// categories (Rent) before generic ones. Names must match the defaults
-// seeded in src/db/queries.js.
+// Keyword → category. Order matters: first hit wins.
+// Names must match DEFAULT_CATEGORIES in @expense/db.
 const KEYWORDS = [
   { match: ['rent', 'landlord'], category: 'Rent' },
   { match: ['groceries', 'supermarket', 'grocery', 'milk', 'bread', 'eggs'], category: 'Groceries' },
@@ -15,8 +13,7 @@ const KEYWORDS = [
 ];
 
 /**
- * Parses messages like "150 lunch" or "2400 rent for september".
- * @param {string} text raw message text from the user
+ * @param {string} text
  * @returns {{ ok: true, amount: number, note: string } | { ok: false, error: string }}
  */
 function parseExpense(text) {
@@ -25,13 +22,9 @@ function parseExpense(text) {
   }
 
   const trimmed = text.trim();
-
-  // First token must be a number (dot/comma decimals, thousands commas
-  // allowed), then whitespace, then the note. \s+ tolerates multiple spaces.
   const match = trimmed.match(/^([0-9][0-9.,]*)\s+(.+)$/);
 
   if (!match) {
-    // "150" with no note is a common typo - give a specific hint.
     if (/^[0-9]+(?:[.,][0-9]+)?$/.test(trimmed)) {
       return { ok: false, error: 'You gave me an amount but no note. Try: 150 lunch' };
     }
@@ -41,7 +34,6 @@ function parseExpense(text) {
     };
   }
 
-  // "1,200.50" -> "1200.50" (strip thousands separators, keep the decimal dot).
   const amount = Number(match[1].replace(/,/g, ''));
 
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -51,19 +43,13 @@ function parseExpense(text) {
     return { ok: false, error: 'That amount is too large to be plausible.' };
   }
 
-  // Collapse runs of whitespace inside the note ("rent   for   september").
   const note = match[2].replace(/\s+/g, ' ').trim().slice(0, 200);
-
   return { ok: true, amount, note };
 }
 
 /**
- * Guesses a category for a note using whole-word keywords, then a literal
- * category-name match ("2400 rent"). Whole-word matching means "gas" matches
- * "gas station" but not "gasket". Returns null when nothing matches
- * confidently - the bot then asks the user to pick.
  * @param {string} note
- * @param {{ id: number, name: string }[]} categories the user's categories
+ * @param {{ id: number, name: string }[]} categories
  * @returns {{ id: number, name: string } | null}
  */
 function guessCategory(note, categories) {
@@ -76,7 +62,6 @@ function guessCategory(note, categories) {
     }
   }
 
-  // The note may literally be a category name ("2400 rent").
   const bare = note.trim().toLowerCase();
   return (
     categories.find((c) => {
