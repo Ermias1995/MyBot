@@ -51,6 +51,26 @@ npm run dev:web    # Mini App (Vite; proxies /api → API)
 - Auth via Telegram `initData` (HMAC verified on the API)
 - Dashboard: month total, category donut, 7-day chart, recent list
 
+## API (all require `X-Telegram-Init-Data`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/me` | Auth smoke test |
+| GET | `/api/dashboard` | Home screen payload (+ `budgetLeft` when set) |
+| GET | `/api/categories` | List categories for forms |
+| GET | `/api/accounts` | Payment channels: Telebirr, CBE, Cash |
+| GET | `/api/transactions` | List (`from`, `to`, `categoryId`, `account`, `q`, `limit`, `offset`) |
+| POST | `/api/transactions` | Add expense `{ amount, categoryId, note?, spentAt?, account? }` |
+| GET/PATCH/DELETE | `/api/transactions/:id` | Read / update / delete one |
+| GET | `/api/budgets` | List (`month=YYYY-MM`) |
+| GET | `/api/budgets/summary` | Spent vs budget + status for Budgets UI |
+| POST | `/api/budgets` | Upsert `{ amount, month?, categoryId? }` |
+| GET/PATCH/DELETE | `/api/budgets/:id` | Read / update amount / delete |
+
+If the project already had older tables, run in order:
+1. `supabase/migrations/001_budgets.sql`
+2. `supabase/migrations/002_transaction_account.sql`
+
 ## Notes
 
 - Keep `SUPABASE_SERVICE_KEY` server-side only (root `.env`)
