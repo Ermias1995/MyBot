@@ -7,6 +7,9 @@ const express = require('express');
 const cors = require('cors');
 const { verifyTelegramAuth } = require('./middleware/verifyTelegramAuth');
 const dashboardRoute = require('./routes/dashboard');
+const transactionsRoute = require('./routes/transactions');
+const categoriesRoute = require('./routes/categories');
+const budgetsRoute = require('./routes/budgets');
 
 const PORT = process.env.PORT || 3000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
@@ -39,6 +42,10 @@ app.get('/api/me', verifyTelegramAuth, (req, res) => {
 });
 
 app.use('/api/dashboard', dashboardRoute);
+app.use('/api/transactions', transactionsRoute);
+app.use('/api/categories', categoriesRoute);
+app.use('/api/budgets', budgetsRoute);
+app.use('/api/accounts', require('./routes/accounts'));
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found.' });

@@ -22,6 +22,21 @@ export const mainButton = {
     webApp.MainButton.onClick(onClick);
     webApp.MainButton.show();
   },
+  setText(text) {
+    getWebApp()?.MainButton.setText(text);
+  },
+  enable() {
+    getWebApp()?.MainButton.enable();
+  },
+  disable() {
+    getWebApp()?.MainButton.disable();
+  },
+  showProgress() {
+    getWebApp()?.MainButton.showProgress?.(false);
+  },
+  hideProgress() {
+    getWebApp()?.MainButton.hideProgress?.();
+  },
   hide(onClick) {
     const webApp = getWebApp();
     if (!webApp) return;
@@ -29,3 +44,26 @@ export const mainButton = {
     webApp.MainButton.hide();
   },
 };
+
+export const backButton = {
+  show(onClick) {
+    const webApp = getWebApp();
+    if (!webApp?.BackButton) return;
+    webApp.BackButton.onClick(onClick);
+    webApp.BackButton.show();
+  },
+  hide(onClick) {
+    const webApp = getWebApp();
+    if (!webApp?.BackButton) return;
+    if (onClick) webApp.BackButton.offClick(onClick);
+    webApp.BackButton.hide();
+  },
+};
+
+export function haptic(type = 'light') {
+  try {
+    getWebApp()?.HapticFeedback?.impactOccurred?.(type);
+  } catch {
+    /* ignore */
+  }
+}
