@@ -334,6 +334,7 @@ export default function Dashboard({ onAdd, onBudgets, onTransactions }) {
 
   if (error) {
     const outsideTelegram = /Missing X-Telegram-Init-Data/.test(error.message);
+    const badToken = /Invalid initData signature/.test(error.message);
     return (
       <div className="min-h-screen bg-tg-bg px-4 pb-20 pt-4 text-tg-text">
         <p className="text-center font-medium">Could not load the dashboard.</p>
@@ -342,6 +343,21 @@ export default function Dashboard({ onAdd, onBudgets, onTransactions }) {
           <p className="mt-4 text-center text-sm text-tg-hint">
             Tip: open this page inside Telegram — a plain browser has no initData.
           </p>
+        )}
+        {badToken && (
+          <p className="mt-4 text-center text-sm text-tg-hint">
+            Fix: BotFather → your bot → API Token → paste into root `.env` as TELEGRAM_BOT_TOKEN,
+            then restart `npm run dev:api`.
+          </p>
+        )}
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="mx-auto mt-6 block rounded-xl bg-tg-button px-4 py-3 text-sm font-semibold text-tg-button-text"
+          >
+            Open Add Expense anyway
+          </button>
         )}
       </div>
     );

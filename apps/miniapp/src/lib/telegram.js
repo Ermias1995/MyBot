@@ -20,6 +20,7 @@ export const mainButton = {
     if (!webApp) return;
     webApp.MainButton.setText(text);
     webApp.MainButton.onClick(onClick);
+    webApp.MainButton.enable();
     webApp.MainButton.show();
   },
   setText(text) {

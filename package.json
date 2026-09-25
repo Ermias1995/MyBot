@@ -18,5 +18,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@expense/api": "*",
+    "@expense/db": "*"
   }
 }

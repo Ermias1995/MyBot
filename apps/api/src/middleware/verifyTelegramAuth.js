@@ -43,7 +43,7 @@ function verifyTelegramAuth(req, res, next) {
     return res.status(401).json({ error: 'Missing X-Telegram-Init-Data header.' });
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const botToken = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
   if (!botToken) {
     console.error('[auth] TELEGRAM_BOT_TOKEN is not set');
     return res.status(500).json({ error: 'Server is not configured for Telegram auth.' });
@@ -51,7 +51,10 @@ function verifyTelegramAuth(req, res, next) {
 
   const params = verifyInitData(initData, botToken);
   if (!params) {
-    return res.status(401).json({ error: 'Invalid initData signature.' });
+    return res.status(401).json({
+      error:
+        'Invalid initData signature. TELEGRAM_BOT_TOKEN in .env must be the API token for the same bot that opens this Mini App.',
+    });
   }
 
   const authDate = Number(params.get('auth_date'));

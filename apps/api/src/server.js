@@ -11,13 +11,15 @@ const transactionsRoute = require('./routes/transactions');
 const categoriesRoute = require('./routes/categories');
 const budgetsRoute = require('./routes/budgets');
 
-const PORT = process.env.PORT || 3000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
 
 if (!BOT_TOKEN) {
-  console.error('Missing TELEGRAM_BOT_TOKEN. Copy .env.example to .env at the repo root.');
-  process.exit(1);
+  console.error('Missing TELEGRAM_BOT_TOKEN. Set it in .env (local) or Vercel env vars.');
+  // Don't process.exit on Vercel cold start — throw so the request fails clearly.
+  if (require.main === module) {
+    process.exit(1);
+  }
 }
 
 const app = express();
@@ -56,9 +58,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-  if (!FRONTEND_ORIGIN) {
-    console.log('FRONTEND_ORIGIN is not set — CORS allows localhost only.');
-  }
-});
+// Local: listen. Vercel: export the app as a serverless function.
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`API listening on http://localhost:${PORT}`);
+    if (!FRONTEND_ORIGIN) {
+      console.log('FRONTEND_ORIGIN is not set — CORS allows localhost only.');
+    }
+  });
+}
+
+module.exports = app;
